@@ -1,10 +1,13 @@
 package com.example.Cart.Service.service;
 
+import com.example.Cart.Service.dto.ProductDto;
 import com.example.Cart.Service.entity.Cart;
 import com.example.Cart.Service.entity.CartItem;
 import com.example.Cart.Service.exception.ResourceNotFoundException;
 import com.example.Cart.Service.repository.CartRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.Optional;
 
@@ -12,8 +15,11 @@ import java.util.Optional;
 public class CartService {
     private final CartRepository cartRepository;
 
-    public CartService(CartRepository cartRepository) {
+    private final WebClient webClient;
+    @Autowired
+    public CartService(CartRepository cartRepository, WebClient.Builder webClientBuilder) {
         this.cartRepository = cartRepository;
+        this.webClient = webClientBuilder.baseUrl("http://localhost:8082").build();
     }
 
     public Cart createCart(){
@@ -66,8 +72,15 @@ public class CartService {
     }
 
     private double getProductPrice(Long productId) {
-        // Здесь будет запрос к Product Service для получения цены
-        return 100.0; // примерное значение
+        // Здесь будет запрос к другому микро-сервису, точнее Product-Service для получения цены.
+        ProductDto product = webClient.get()
+                .uri("/products/{id}", productId)
+                .retrieve()
+                .bodyToMono(ProductDto.class)
+                .block();
+
+
+        return product.getPrice();
     }
 
 
