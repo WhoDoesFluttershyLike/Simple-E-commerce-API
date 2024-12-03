@@ -11,14 +11,14 @@ import java.util.List;
 @Entity
 @Getter
 @Setter
-@Table(name = "order")
+@Table(name = "orders")
 public class Order {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private Long userId;
-    private LocalDateTime createdDate;
+    private LocalDateTime createdDate = LocalDateTime.now();
     private String status; // CREATED, PAID, DELIVERED
     private Double totalPrice;
 

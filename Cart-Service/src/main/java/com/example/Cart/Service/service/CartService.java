@@ -72,7 +72,7 @@ public class CartService {
     }
 
     private double getProductPrice(Long productId) {
-        // Здесь будет запрос к другому микро-сервису, точнее Product-Service для получения цены.
+        // Здесь будет запрос к Product-Service для получения цены.
         ProductDto product = webClient.get()
                 .uri("/products/{id}", productId)
                 .retrieve()

@@ -10,22 +10,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public class OrderService {
     private final OrderRepository orderRepository;
-    private final WebClient webClient;
+    private final WebClient cartWebClient;
+
+    private final WebClient paymentWebClient;
+
     @Autowired
 
-    public OrderService(OrderRepository orderRepository, WebClient.Builder webClientBuilder) {
+    public OrderService(OrderRepository orderRepository, WebClient.Builder webClientBuilder, WebClient webClient) {
         this.orderRepository = orderRepository;
-        this.webClient = webClientBuilder.baseUrl("http://localhost:8081").build(); //cart-service
+        this.cartWebClient = webClientBuilder.baseUrl("http://localhost:8081").build(); //cart-service
+        this.paymentWebClient = webClient; //payment-service
     }
 
     public Order createOrder(Long userId){
-        CartDTO cart = webClient.get()
-                .uri("http://cart-service/carts/{userId}", userId)
+        CartDTO cart = cartWebClient.get()
+                .uri("/carts/{userId}", userId)
                 .retrieve()
                 .bodyToMono(CartDTO.class)
                 .block();
@@ -46,9 +49,57 @@ public class OrderService {
         }).toList();
         order.setItems(orderItems);
         order.setTotalPrice(cart.getTotalPrice());
-
         return orderRepository.save(order);
     }
+
+    public Order payment(Long orderId){
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        String startPayment = initiate(order.getId(), order.getUserId(), order.getTotalPrice(), "USD");
+        String response = confirm(startPayment);
+
+        if ("SUCCESS".equals(response)) {
+            order.setStatus("COMPLETED");
+        } else {
+            order.setStatus("FAILED");
+        }
+        return orderRepository.save(order);
+    }
+
+    public String initiate(Long orderId, Long userId, Double amount, String currency){
+        return paymentWebClient.post()
+                .uri(uriBuilder -> uriBuilder
+                        .scheme("http")
+                        .host("localhost")
+                        .port(8084)
+                        .path("/payments/initiate")
+                        .queryParam("orderId", orderId)
+                        .queryParam("userId", userId)
+                        .queryParam("amount", amount)
+                        .queryParam("currency", currency)
+                        .build()
+                )
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+    }
+
+    public String confirm(String id){
+        return paymentWebClient.post()
+                .uri(uriBuilder -> uriBuilder
+                        .scheme("http")
+                        .host("localhost")
+                        .port(8084)
+                        .path("/payments/confirm")
+                        .queryParam("paymentIntentId", id)
+                        .build()
+                )
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+    }
+
+
 
     public List<Order> getOrdersByUserId(Long userId) {
         return orderRepository.findByUserId(userId);

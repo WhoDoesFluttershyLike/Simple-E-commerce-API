@@ -5,7 +5,9 @@ import com.example.Order.Service.service.OrderService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.view.RedirectView;
 
+import java.net.http.HttpClient;
 import java.util.List;
 
 @RestController
@@ -17,8 +19,15 @@ public class OrderController {
         this.orderService = orderService;
     }
     @PostMapping("/{userId}")
-    public ResponseEntity<Order> createOrder(@PathVariable Long userId) {
+    public RedirectView createOrder(@PathVariable Long userId) {
         Order order = orderService.createOrder(userId);
+        return new RedirectView("/orders/initiate-payment/"+order.getId());
+        //return ResponseEntity.status(HttpStatus.CREATED).body(order);
+    }
+
+    @GetMapping("/initiate-payment/{orderId}")
+    public ResponseEntity<Order> initiatePayment(@PathVariable Long orderId){
+        Order order = orderService.payment(orderId);
         return ResponseEntity.status(HttpStatus.CREATED).body(order);
     }
 
