@@ -132,4 +132,8 @@ public class UserService {
 
     }
 
+    public boolean findUserById(Long id){
+        return userRepository.existsById(id);
+    }
+
 }
